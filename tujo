@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YunEat — Smart Food & Budget Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #f8fafc; }
+        .theme-orange { color: #f97316; }
+        .bg-theme-orange { background-color: #f97316; }
+        .theme-green { color: #22c55e; }
+        .bg-theme-green { background-color: #22c55e; }
+        
+        /* Custom Scrollbar for tables/lists */
+        ::-webkit-scrollbar { height: 6px; width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #f97316;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .hidden { display: none !important; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        orange: { 500: '#f97316', 600: '#ea580c' },
+                        green: { 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <!-- === APP CONTAINER === -->
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-xl relative pb-20">
+        
+        <!-- HEADER -->
+        <header class="bg-white border-b border-gray-100 p-4 sticky top-0 z-10">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-bold flex items-center gap-2">
+                        🍱 <span class="theme-orange">Yun</span><span class="theme-green">Eat</span>
+                    </h1>
+                    <p class="text-xs text-gray-500">For YunTech Students 🇹🇼</p>
+                </div>
+                <button onclick="clearData()" class="text-xs text-gray-400 hover:text-red-500">Reset App</button>
+            </div>
+        </header>
+
+        <!-- === VIEW: SETUP PROFILE === -->
+        <div id="view-setup" class="p-6 hidden">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold">Welcome to YunEat! 👋</h2>
+                <p class="text-sm text-gray-500 mt-2">Let's set up your profile for personalized AI tracking.</p>
+            </div>
+
+            <form id="setupForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Your Name</label>
+                    <input type="text" id="setupName" required class="mt-1 w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Height (cm)</label>
+                        <input type="number" id="setupHeight" required class="mt-1 w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                        <input type="number" id="setupWeight" required class="mt-1 w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Target Weight (kg)</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="setupTargetWeight" required class="mt-1 w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none">
+                        <select id="setupGoalType" class="mt-1 p-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500 outline-none">
+                            <option value="normal">Normal Goal</option>
+                            <option value="sixpack">Six-Pack Lean 🤫</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- FITUR BARU: AI SCAN KALORI -->
+                <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mb-2 mt-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-bold text-indigo-800">Daily Macros Goal</label>
+                        <button type="button" onclick="getAIGoals()" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-full hover:bg-indigo-700 shadow-sm transition flex items-center gap-1">
+                            <span>🤖</span> AI Calculate
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Daily Calorie Goal</label>
+                            <input type="number" id="setupCals" value="2000" required class="mt-1 w-full p-2 border border-indigo-200 rounded-lg outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Daily Protein (g)</label>
+                            <input type="number" id="setupProtein" value="50" required class="mt-1 w-full p-2 border border-indigo-200 rounded-lg outline-none">
+                        </div>
+                    </div>
+                    <p id="aiGoalLoading" class="text-xs text-indigo-500 mt-2 hidden animate-pulse">AI is calculating your ideal body macros...</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Weekly Food Budget (TWD)</label>
+                    <input type="number" id="setupBudget" value="1500" required class="mt-1 w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Dietary Restrictions</label>
+                    <div class="h-48 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50 text-sm">
+                        <p class="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-1">Medical/Allergies</p>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Gluten-Free" class="diet-cb"> <span>Gluten-Free</span></label>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Lactose Intolerant" class="diet-cb"> <span>Lactose Intolerant</span></label>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Nut-Free" class="diet-cb"> <span>Nut-Free</span></label>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Seafood-Free" class="diet-cb"> <span>Seafood-Free</span></label>
+                        <label class="flex items-center space-x-2 mb-3"><input type="checkbox" value="Egg-Free" class="diet-cb"> <span>Egg-Free</span></label>
+                        
+                        <p class="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-1">Religious</p>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Halal" class="diet-cb"> <span>Halal</span></label>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Kosher" class="diet-cb"> <span>Kosher</span></label>
+                        <label class="flex items-center space-x-2 mb-3"><input type="checkbox" value="Religious Vegetarian" class="diet-cb"> <span>Religious Vegetarian (e.g. Jain)</span></label>
+                        
+                        <p class="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-1">Lifestyle & Health</p>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Vegan" class="diet-cb"> <span>Vegan</span></label>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Vegetarian" class="diet-cb"> <span>Vegetarian</span></label>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Diabetic" class="diet-cb"> <span>Diabetic (Low GI)</span></label>
+                        <label class="flex items-center space-x-2 mb-1"><input type="checkbox" value="Hypertensive" class="diet-cb"> <span>Hypertensive (Low Sodium)</span></label>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-theme-orange text-white font-bold py-4 rounded-xl shadow-lg hover:bg-orange-600 transition">
+                    Start Tracking
+                </button>
+            </form>
+        </div>
+
+        <!-- === VIEW: DASHBOARD === -->
+        <div id="view-dashboard" class="hidden">
+            
+            <!-- Welcome & BMI -->
+            <div class="p-4 bg-orange-50">
+                <h2 class="text-xl font-bold" id="dashGreeting">Hi there! 👋</h2>
+                
+                <div class="mt-3 bg-white p-3 rounded-xl shadow-sm border border-orange-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold">💪 Body Profile</p>
+                        <p class="font-bold text-lg" id="bmiDisplay">BMI: --</p>
+                        <p class="text-xs text-gray-600" id="goalEstimate">Estimating goal...</p>
+                    </div>
+                    <div class="text-3xl" id="bmiEmoji">⚖️</div>
+                </div>
+            </div>
+
+            <!-- Daily Summary Cards -->
+            <div class="p-4">
+                <h3 class="font-bold mb-3">🔥 Today's Summary</h3>
+                <div class="space-y-3">
+                    
+                    <!-- Calories -->
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="font-semibold">Calories</span>
+                            <span id="calText">0 / 2000 kcal</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="calBar" class="bg-orange-500 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Protein -->
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="font-semibold">Protein</span>
+                            <span id="proText">0 / 50g</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="proBar" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Budget -->
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="font-semibold">💰 Daily Budget Spent</span>
+                            <span id="budgetText">0 / 200 TWD</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="budgetBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="px-4 flex gap-3">
+                <button onclick="showAddFoodModal()" class="flex-1 bg-theme-orange text-white py-3 rounded-xl font-bold shadow-md flex justify-center items-center gap-2">
+                    <span>+ Log Food</span>
+                </button>
+                <button onclick="getRecommendations()" class="flex-1 bg-white border-2 border-orange-500 text-orange-500 py-3 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2">
+                    <span>🤖 Ideas?</span>
+                </button>
+            </div>
+
+            <!-- Food Log Table -->
+            <div class="p-4 mt-2">
+                <h3 class="font-bold mb-3 flex justify-between items-end">
+                    <span>🍱 Today's Log</span>
+                    <span class="text-xs font-normal text-gray-500" id="varietyScore">Variety: 0</span>
+                </h3>
+                
+                <div id="foodLogList" class="space-y-3">
+                    <!-- Logs injected here -->
+                    <p class="text-center text-sm text-gray-400 py-4 italic">No food logged yet. Time to eat!</p>
+                </div>
+            </div>
+
+            <!-- Weekly Overview (Simple Implementation) -->
+            <div class="p-4 bg-gray-50 border-t border-gray-200 pb-24">
+                <h3 class="font-bold mb-3">📊 Weekly Overview</h3>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-sm text-gray-500">Remaining Weekly Budget</p>
+                    <p class="text-2xl font-bold text-green-600" id="weeklyBudgetRemaining">0 TWD</p>
+                    <p class="text-xs text-gray-400 mt-1">Refreshes every Monday.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- === MODAL: ADD FOOD === -->
+        <div id="modal-add-food" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end">
+            <div class="bg-white rounded-t-2xl p-5 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Log a Meal</h3>
+                    <button onclick="closeModals()" class="text-gray-500 text-xl font-bold">&times;</button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Input Method Tabs -->
+                    <div class="flex bg-gray-100 rounded-lg p-1">
+                        <button onclick="switchInputMode('text')" id="btnModeText" class="flex-1 py-2 text-sm font-semibold rounded-md bg-white shadow-sm">Type</button>
+                        <button onclick="switchInputMode('image')" id="btnModeImage" class="flex-1 py-2 text-sm font-semibold rounded-md text-gray-500">📷 Scan</button>
+                    </div>
+
+                    <!-- Text Input -->
+                    <div id="inputModeText">
+                        <label class="block text-sm font-medium text-gray-700">Food Name</label>
+                        <input type="text" id="foodName" placeholder="e.g., Lu Rou Fan, Beef Noodle Soup" class="mt-1 w-full p-3 border border-gray-300 rounded-xl outline-none focus:border-orange-500">
+                    </div>
+
+                    <!-- Image Input -->
+                    <div id="inputModeImage" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Take Photo or Upload</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center cursor-pointer relative hover:bg-gray-50" onclick="document.getElementById('foodImageInput').click()">
+                            <input type="file" id="foodImageInput" accept="image/*" capture="environment" class="hidden" onchange="handleImageSelection(event)">
+                            <div id="imagePreviewContainer" class="hidden">
+                                <img id="imagePreview" src="" class="mx-auto h-32 object-cover rounded-lg">
+                            </div>
+                            <div id="imagePromptContainer">
+                                <span class="text-3xl">📸</span>
+                                <p class="text-sm text-gray-500 mt-2">Tap to scan your plate</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Portion</label>
+                            <select id="foodPortion" class="mt-1 w-full p-3 border border-gray-300 rounded-xl bg-white outline-none">
+                                <option value="Small">Small</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="Large">Large</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Meal</label>
+                            <select id="foodMealType" class="mt-1 w-full p-3 border border-gray-300 rounded-xl bg-white outline-none">
+                                <option value="Breakfast">Breakfast</option>
+                                <option value="Lunch">Lunch</option>
+                                <option value="Dinner">Dinner</option>
+                                <option value="Snack">Snack</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Price (TWD)</label>
+                        <input type="number" id="foodPrice" placeholder="0" class="mt-1 w-full p-3 border border-gray-300 rounded-xl outline-none focus:border-orange-500">
+                    </div>
+
+                    <button id="btnAnalyze" onclick="analyzeAndLogFood()" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-indigo-700 transition flex justify-center items-center gap-2">
+                        <span>🤖 Analyze with AI</span>
+                    </button>
+                    
+                    <!-- Loading State -->
+                    <div id="aiLoading" class="hidden flex-col items-center justify-center py-4">
+                        <div class="loader mb-2"></div>
+                        <p class="text-sm text-gray-500">AI is analyzing your food...</p>
+                    </div>
+
+                    <!-- AI Result Preview -->
+                    <div id="aiResultPreview" class="hidden border border-green-200 bg-green-50 rounded-xl p-4 mt-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-green-800">AI Analysis Complete</h4>
+                            <span id="resSafety" class="text-xs px-2 py-1 rounded bg-green-200 text-green-800 font-bold">✅ Safe</span>
+                        </div>
+                        <p id="resComment" class="text-sm text-gray-700 italic mb-3">"Looks delicious!"</p>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-sm bg-white p-2 rounded-lg">
+                            <div class="text-center"><span class="block font-bold text-orange-600" id="resCals">0</span>kcal</div>
+                            <div class="text-center"><span class="block font-bold text-blue-600" id="resPro">0g</span>Protein</div>
+                        </div>
+
+                        <!-- Ingredients Breakdown -->
+                        <div class="mt-3">
+                            <p class="text-xs font-bold text-gray-500 uppercase mb-1">Component Breakdown:</p>
+                            <div id="resIngredients" class="space-y-1 text-xs text-gray-600 max-h-32 overflow-y-auto bg-white p-2 rounded-lg border border-gray-100">
+                                <!-- Injected -->
+                            </div>
+                        </div>
+
+                        <button onclick="confirmLogFood()" class="w-full mt-4 bg-green-500 text-white font-bold py-3 rounded-xl shadow hover:bg-green-600 transition">
+                            Add to Today's Log
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === MODAL: RECOMMENDATIONS === -->
+        <div id="modal-recommendations" class="fixed inset-0 bg-black/50 z-50 hidden flex flex-col justify-end">
+            <div class="bg-white rounded-t-2xl p-5 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold flex items-center gap-2">🗺️ Where to eat?</h3>
+                    <button onclick="closeModals()" class="text-gray-500 text-xl font-bold">&times;</button>
+                </div>
+                
+                <div id="recLoading" class="flex flex-col items-center justify-center py-10">
+                    <div class="loader mb-2"></div>
+                    <p class="text-sm text-gray-500">Asking AI for local Douliu options...</p>
+                </div>
+
+                <div id="recList" class="space-y-4 hidden">
+                    <!-- Recommendations injected here -->
+                </div>
+
+                <!-- FITUR BARU: GOOGLE MAPS -->
+                <div id="mapsContainer" class="mt-5 hidden">
+                    <button onclick="openGoogleMaps()" class="w-full bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-xl shadow-sm hover:bg-gray-50 transition flex justify-center items-center gap-2">
+                        <span>🗺️</span> Open in Google Maps
+                    </button>
+                    <p class="text-[10px] text-gray-400 text-center mt-2">Finds restaurants near Yuntech based on your diet</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- === JAVASCRIPT LOGIC === -->
+    <script>
+        // --- STATE MANAGEMENT & API KEY SECURE ---
+        let apiKey = localStorage.getItem('yuneat_apikey') || "";
+        if (!apiKey) {
+            apiKey = prompt("Welcome to YunEat! Please enter your Gemini API Key to activate AI features:");
+            if (apiKey) {
+                localStorage.setItem('yuneat_apikey', apiKey);
+            } else {
+                alert("AI features will not work without a valid API Key. Refresh to try again.");
+            }
+        }
+
+        let userProfile = null;
+        let foodLog = [];
+        let pendingAnalysisData = null;
+        let currentBase64Image = null;
+
+        // --- INIT ---
+        window.onload = () => {
+            loadData();
+            if (!userProfile) {
+                document.getElementById('view-setup').classList.remove('hidden');
+            } else {
+                renderDashboard();
+                document.getElementById('view-dashboard').classList.remove('hidden');
+            }
+            
+            // Event Listeners
+            document.getElementById('setupForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveProfile();
+            });
+        };
+
+        // --- DATA PERSISTENCE ---
+        function loadData() {
+            const savedProfile = localStorage.getItem('yuneat_profile');
+            const savedLog = localStorage.getItem('yuneat_log');
+            if (savedProfile) userProfile = JSON.parse(savedProfile);
+            if (savedLog) foodLog = JSON.parse(savedLog);
+        }
+
+        function saveData() {
+            localStorage.setItem('yuneat_profile', JSON.stringify(userProfile));
+            localStorage.setItem('yuneat_log', JSON.stringify(foodLog));
+        }
+
+        function clearData() {
+            if(confirm("Reset all data? This cannot be undone.")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // --- FITUR BARU: AI GOAL CALCULATOR ---
+        async function getAIGoals() {
+            const h = document.getElementById('setupHeight').value;
+            const w = document.getElementById('setupWeight').value;
+            const tw = document.getElementById('setupTargetWeight').value;
+            const goal = document.getElementById('setupGoalType').value;
+            
+            if(!h || !w || !tw) {
+                alert("Please fill in your Height, Weight, and Target Weight first!");
+                return;
+            }
+
+            document.getElementById('aiGoalLoading').classList.remove('hidden');
+
+            const systemPrompt = `You are an expert fitness AI. 
+User profile: Height ${h}cm, Weight ${w}kg, Target Weight ${tw}kg. Goal mode: ${goal}.
+Calculate the optimal daily calorie intake and daily protein intake (in grams) for this user to reach their goal healthily.
+Return ONLY a valid JSON object matching this schema: { "calories": number, "protein": number }`;
+
+            const payload = {
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: "user", parts: [{ text: "Calculate my daily macros." }] }],
+                generationConfig: { temperature: 0.2, responseMimeType: "application/json" }
+            };
+
+            try {
+                const result = await fetchGeminiWithRetry(payload);
+                const textResp = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const data = extractJSON(textResp);
+                
+                if(data && data.calories) {
+                    document.getElementById('setupCals').value = data.calories;
+                    document.getElementById('setupProtein').value = data.protein;
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Failed to calculate. Please check your API Key.");
+            } finally {
+                document.getElementById('aiGoalLoading').classList.add('hidden');
+            }
+        }
+
+        // --- PROFILE & MATH LOGIC ---
+        function saveProfile() {
+            const checkboxes = document.querySelectorAll('.diet-cb:checked');
+            const dietModes = Array.from(checkboxes).map(cb => cb.value);
+
+            userProfile = {
+                name: document.getElementById('setupName').value,
+                height: parseFloat(document.getElementById('setupHeight').value),
+                weight: parseFloat(document.getElementById('setupWeight').value),
+                targetWeight: parseFloat(document.getElementById('setupTargetWeight').value),
+                goalType: document.getElementById('setupGoalType').value,
+                dailyCals: parseInt(document.getElementById('setupCals').value),
+                dailyProtein: parseInt(document.getElementById('setupProtein').value),
+                weeklyBudget: parseInt(document.getElementById('setupBudget').value),
+                dietModes: dietModes.length > 0 ? dietModes : ["No Restriction"]
+            };
+
+            saveData();
+            document.getElementById('view-setup').classList.add('hidden');
+            renderDashboard();
+            document.getElementById('view-dashboard').classList.remove('hidden');
+        }
+
+        function calculateBMIAndGoals() {
+            if(!userProfile) return { bmi: 0, status: '', estimate: '' };
+            
+            const heightM = userProfile.height / 100;
+            const bmi = (userProfile.weight / (heightM * heightM)).toFixed(1);
+            let status = 'Normal';
+            let emoji = '⚖️';
+            
+            if(bmi < 18.5) { status = 'Underweight'; emoji = '🍃'; }
+            else if(bmi > 24.9 && bmi < 30) { status = 'Overweight'; emoji = '⚠️'; }
+            else if(bmi >= 30) { status = 'Obese'; emoji = '🔴'; }
+
+            // Weight change logic (1kg = ~7700 kcal)
+            const diffKg = userProfile.targetWeight - userProfile.weight;
+            let estimate = "";
+            
+            if (Math.abs(diffKg) < 0.5) {
+                estimate = "Target reached or maintaining!";
+            } else if (diffKg < 0) {
+                const weeks = Math.abs(diffKg) / 0.5;
+                estimate = `Target: ${userProfile.targetWeight}kg. Est: ~${Math.ceil(weeks)} weeks.`;
+            } else {
+                const weeks = diffKg / 0.3;
+                estimate = `Target: ${userProfile.targetWeight}kg. Est: ~${Math.ceil(weeks)} weeks.`;
+            }
+
+            if(userProfile.goalType === 'sixpack' && diffKg <= 0) {
+                estimate += " Aiming for lean body fat% 🔥";
+                emoji = '💪';
+            }
+
+            return { bmi, status, estimate, emoji };
+        }
+
+        // --- DASHBOARD RENDERING ---
+        function getTodayLogs() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            return foodLog.filter(log => log.date.startsWith(todayStr));
+        }
+
+        function renderDashboard() {
+            document.getElementById('dashGreeting').innerText = `Hi ${userProfile.name}! 👋`;
+            
+            const stats = calculateBMIAndGoals();
+            document.getElementById('bmiDisplay').innerText = `BMI: ${stats.bmi} (${stats.status})`;
+            document.getElementById('goalEstimate').innerText = stats.estimate;
+            document.getElementById('bmiEmoji').innerText = stats.emoji;
+
+            const todayLogs = getTodayLogs();
+            let tCals = 0, tPro = 0, tSpent = 0;
+            const uniqueFoods = new Set();
+            
+            todayLogs.forEach(log => {
+                tCals += log.calories || 0;
+                tPro += log.protein || 0;
+                tSpent += log.price || 0;
+            });
+
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            foodLog.forEach(log => {
+                if(new Date(log.date) > oneWeekAgo) {
+                    uniqueFoods.add(log.name.toLowerCase());
+                }
+            });
+
+            document.getElementById('calText').innerText = `${tCals} / ${userProfile.dailyCals} kcal`;
+            document.getElementById('calBar').style.width = `${Math.min(100, (tCals/userProfile.dailyCals)*100)}%`;
+            if(tCals > userProfile.dailyCals) document.getElementById('calBar').classList.replace('bg-orange-500', 'bg-red-500');
+            else document.getElementById('calBar').classList.replace('bg-red-500', 'bg-orange-500');
+
+            document.getElementById('proText').innerText = `${tPro} / ${userProfile.dailyProtein} g`;
+            document.getElementById('proBar').style.width = `${Math.min(100, (tPro/userProfile.dailyProtein)*100)}%`;
+
+            const dailyBudget = Math.floor(userProfile.weeklyBudget / 7);
+            document.getElementById('budgetText').innerText = `${tSpent} / ${dailyBudget} TWD`;
+            document.getElementById('budgetBar').style.width = `${Math.min(100, (tSpent/dailyBudget)*100)}%`;
+            if(tSpent > dailyBudget) document.getElementById('budgetBar').classList.replace('bg-green-500', 'bg-red-500');
+
+            document.getElementById('varietyScore').innerText = `Weekly Variety: ${uniqueFoods.size} items`;
+
+            let weekSpent = 0;
+            foodLog.forEach(log => {
+                if(new Date(log.date) > oneWeekAgo) weekSpent += log.price || 0;
+            });
+            const remaining = userProfile.weeklyBudget - weekSpent;
+            const remEl = document.getElementById('weeklyBudgetRemaining');
+            remEl.innerText = `${remaining} TWD`;
+            remEl.className = `text-2xl font-bold ${remaining < 0 ? 'text-red-600' : 'text-green-600'}`;
+
+            const listEl = document.getElementById('foodLogList');
+            listEl.innerHTML = '';
+            
+            if(todayLogs.length === 0) {
+                listEl.innerHTML = '<p class="text-center text-sm text-gray-400 py-4 italic">No food logged yet today.</p>';
+            } else {
+                todayLogs.slice().reverse().forEach(log => {
+                    let badgeColor = 'bg-yellow-100 text-yellow-800';
+                    if(log.safetyStatus === 'Safe') badgeColor = 'bg-green-100 text-green-800';
+                    if(log.safetyStatus === 'Unsafe') badgeColor = 'bg-red-100 text-red-800';
+
+                    let detailsHtml = '';
+                    if(log.ingredientsBreakdown && log.ingredientsBreakdown.length > 0) {
+                        detailsHtml = `<div class="w-full text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+                            Includes: ${log.ingredientsBreakdown.map(i => i.name).join(', ')}
+                        </div>`;
+                    }
+
+                    listEl.innerHTML += `
+                        <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col relative">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="font-bold text-gray-800">${log.name}</h4>
+                                    <p class="text-xs text-gray-500">${log.mealType} • ${log.price} TWD</p>
+                                </div>
+                                <span class="text-[10px] uppercase font-bold px-2 py-1 rounded ${badgeColor}">
+                                    ${log.safetyStatus}
+                                </span>
+                            </div>
+                            <div class="flex gap-4 mt-2 text-sm">
+                                <span class="text-orange-600">🔥 ${log.calories} kcal</span>
+                                <span class="text-blue-600">💪 ${log.protein}g</span>
+                            </div>
+                            ${detailsHtml}
+                            <button onclick="deleteLog('${log.id}')" class="absolute bottom-2 right-2 text-xs text-red-400 hover:text-red-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        function deleteLog(id) {
+            if(confirm('Delete this entry?')) {
+                foodLog = foodLog.filter(l => l.id !== id);
+                saveData();
+                renderDashboard();
+            }
+        }
+
+        // --- UI INTERACTIONS ---
+        function showAddFoodModal() {
+            document.getElementById('modal-add-food').classList.remove('hidden');
+            resetAddFoodForm();
+        }
+
+        function closeModals() {
+            document.getElementById('modal-add-food').classList.add('hidden');
+            document.getElementById('modal-recommendations').classList.add('hidden');
+        }
+
+        function switchInputMode(mode) {
+            const textBtn = document.getElementById('btnModeText');
+            const imgBtn = document.getElementById('btnModeImage');
+            const textInp = document.getElementById('inputModeText');
+            const imgInp = document.getElementById('inputModeImage');
+
+            if(mode === 'text') {
+                textBtn.className = "flex-1 py-2 text-sm font-semibold rounded-md bg-white shadow-sm text-gray-800";
+                imgBtn.className = "flex-1 py-2 text-sm font-semibold rounded-md text-gray-500";
+                textInp.classList.remove('hidden');
+                imgInp.classList.add('hidden');
+                currentBase64Image = null;
+            } else {
+                imgBtn.className = "flex-1 py-2 text-sm font-semibold rounded-md bg-white shadow-sm text-gray-800";
+                textBtn.className = "flex-1 py-2 text-sm font-semibold rounded-md text-gray-500";
+                imgInp.classList.remove('hidden');
+                textInp.classList.add('hidden');
+            }
+        }
+
+        function handleImageSelection(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentBase64Image = e.target.result.split(',')[1]; 
+                
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                document.getElementById('imagePromptContainer').classList.add('hidden');
+                
+                document.getElementById('foodName').value = "Scanned Plate"; 
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetAddFoodForm() {
+            document.getElementById('foodName').value = '';
+            document.getElementById('foodPrice').value = '';
+            document.getElementById('aiResultPreview').classList.add('hidden');
+            document.getElementById('btnAnalyze').classList.remove('hidden');
+            
+            document.getElementById('foodImageInput').value = '';
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('imagePromptContainer').classList.remove('hidden');
+            currentBase64Image = null;
+            switchInputMode('text');
+        }
+
+        // --- AI API LOGIC (GEMINI) ---
+        async function fetchGeminiWithRetry(payload, maxRetries = 5) {
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            let retries = 0;
+            const delays = [1000, 2000, 4000, 8000, 16000];
+
+            while (retries < maxRetries) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    if (retries === maxRetries - 1) throw error;
+                    await new Promise(r => setTimeout(r, delays[retries]));
+                    retries++;
+                }
+            }
+        }
+
+        function extractJSON(text) {
+            try {
+                const match = text.match(/```json\n([\s\S]*?)\n```/);
+                if (match && match[1]) {
+                    return JSON.parse(match[1]);
+                }
+                return JSON.parse(text);
+            } catch (e) {
+                console.error("Failed to parse AI JSON response:", text);
+                return null;
+            }
+        }
+
+        async function analyzeAndLogFood() {
+            let name = document.getElementById('foodName').value;
+            const portion = document.getElementById('foodPortion').value;
+            const price = parseFloat(document.getElementById('foodPrice').value) || 0;
+            
+            const isImageMode = !document.getElementById('inputModeImage').classList.contains('hidden');
+
+            if (isImageMode && !currentBase64Image) {
+                alert("Please take a photo or select an image.");
+                return;
+            }
+            if (!isImageMode && !name) {
+                alert("Please enter a food name.");
+                return;
+            }
+
+            document.getElementById('btnAnalyze').classList.add('hidden');
+            document.getElementById('aiLoading').classList.remove('hidden');
+            document.getElementById('aiResultPreview').classList.add('hidden');
+
+            const dietRules = userProfile.dietModes.join(", ");
+            
+            const systemPrompt = `You are a strict nutritionist app AI.
+Return ONLY valid JSON.
+The user has these dietary restrictions: [${dietRules}].
+Calculate estimated calories, macronutrients, and break down the meal into ingredients.
+Assess if it is strictly 'Safe', 'Unsafe', or 'Uncertain' based on ALL their listed restrictions.
+Schema required:
+{
+  "total_calories": number,
+  "total_protein_g": number,
+  "total_carbs_g": number,
+  "total_fat_g": number,
+  "diet_safety_status": "Safe" | "Unsafe" | "Uncertain",
+  "inferred_food_name": "string (what the dish actually is)",
+  "health_rating": "Healthy" | "Moderate" | "Indulgent",
+  "fun_comment": "Short motivating sentence.",
+  "ingredients_breakdown": [
+    { "name": "string", "estimated_weight_g": number, "calories": number, "protein_g": number }
+  ]
+}`;
+
+            let userText = `Analyze this food: '${name}', Portion size: ${portion}.`;
+            if(isImageMode) {
+                userText = `Analyze the food in this image. Assume it's a ${portion} portion. Identify what the dish is.`;
+            }
+
+            const payload = {
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: userText }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.2, 
+                    responseMimeType: "application/json"
+                }
+            };
+
+            if (isImageMode && currentBase64Image) {
+                 payload.contents[0].parts.push({
+                     inlineData: {
+                         mimeType: "image/jpeg", 
+                         data: currentBase64Image
+                     }
+                 });
+            }
+
+            try {
+                const result = await fetchGeminiWithRetry(payload);
+                const textResp = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const data = extractJSON(textResp);
+
+                if(!data) throw new Error("Invalid AI Response format.");
+
+                pendingAnalysisData = {
+                    name: isImageMode ? data.inferred_food_name : name,
+                    calories: data.total_calories,
+                    protein: data.total_protein_g,
+                    carbs: data.total_carbs_g,
+                    fat: data.total_fat_g,
+                    safetyStatus: data.diet_safety_status,
+                    ingredientsBreakdown: data.ingredients_breakdown,
+                    comment: data.fun_comment,
+                    price: price,
+                    mealType: document.getElementById('foodMealType').value
+                };
+
+                document.getElementById('resCals').innerText = data.total_calories;
+                document.getElementById('resPro').innerText = data.total_protein_g + 'g';
+                document.getElementById('resComment').innerText = `"${data.fun_comment}"`;
+                
+                const safeEl = document.getElementById('resSafety');
+                safeEl.innerText = data.diet_safety_status;
+                safeEl.className = 'text-xs px-2 py-1 rounded font-bold ';
+                if(data.diet_safety_status === 'Safe') safeEl.className += 'bg-green-200 text-green-800';
+                else if(data.diet_safety_status === 'Unsafe') safeEl.className += 'bg-red-200 text-red-800';
+                else safeEl.className += 'bg-yellow-200 text-yellow-800';
+
+                const ingContainer = document.getElementById('resIngredients');
+                ingContainer.innerHTML = data.ingredients_breakdown.map(i => 
+                    `<div class="flex justify-between border-b border-gray-50 pb-1">
+                        <span>${i.name} (~${i.estimated_weight_g}g)</span>
+                        <span class="text-gray-400">${i.calories}k • ${i.protein_g}p</span>
+                    </div>`
+                ).join('');
+
+                document.getElementById('aiLoading').classList.add('hidden');
+                document.getElementById('aiResultPreview').classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+                alert("Failed to analyze food. Please check API key or try again.");
+                document.getElementById('aiLoading').classList.add('hidden');
+                document.getElementById('btnAnalyze').classList.remove('hidden');
+            }
+        }
+
+        function confirmLogFood() {
+            if(!pendingAnalysisData) return;
+            
+            foodLog.push({
+                id: Date.now().toString(),
+                date: new Date().toISOString(),
+                ...pendingAnalysisData
+            });
+
+            saveData();
+            closeModals();
+            renderDashboard();
+            pendingAnalysisData = null;
+        }
+
+        // --- RECOMMENDATIONS LOGIC ---
+        async function getRecommendations() {
+            document.getElementById('modal-recommendations').classList.remove('hidden');
+            document.getElementById('recLoading').classList.remove('hidden');
+            const listEl = document.getElementById('recList');
+            listEl.classList.add('hidden');
+            listEl.innerHTML = '';
+            document.getElementById('mapsContainer').classList.add('hidden');
+
+            const todayFoods = getTodayLogs().map(l => l.name).join(", ");
+            const dietRules = userProfile.dietModes.join(", ");
+
+            const systemPrompt = `You are a local food guide for YunTech University students in Douliu, Yunlin, Taiwan.
+Return ONLY a JSON array.
+User diet: [${dietRules}].
+Eaten today: [${todayFoods || 'Nothing yet'}].
+Suggest 3 DIFFERENT specific local Taiwanese food options found in Douliu that strictly adhere to their diet.
+Schema:
+[
+  { "food_name": "string", "price_twd": number, "reason": "string", "safety_status": "Safe", "search_query": "specific food name Douliu" }
+]`;
+
+            const payload = {
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: "user", parts: [{ text: "Give me 3 food recommendations." }] }],
+                generationConfig: { temperature: 0.7, responseMimeType: "application/json" }
+            };
+
+            try {
+                const result = await fetchGeminiWithRetry(payload);
+                const textResp = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const data = extractJSON(textResp);
+
+                if(!Array.isArray(data)) throw new Error("Expected Array JSON");
+
+                data.forEach(item => {
+                    // FITUR BARU: Bikin link Google Maps otomatis
+                    const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((item.search_query || item.food_name) + ' Douliu Taiwan')}`;
+                    
+                    listEl.innerHTML += `
+                        <div class="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-bold text-orange-800">${item.food_name}</h4>
+                                <span class="text-sm font-bold text-gray-600">~${item.price_twd} TWD</span>
+                            </div>
+                            <p class="text-sm text-gray-700 leading-snug">${item.reason}</p>
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="inline-block text-xs bg-green-200 text-green-800 px-2 py-1 rounded font-bold">✅ ${item.safety_status}</span>
+                                <a href="${mapsLink}" target="_blank" class="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full hover:bg-blue-200 transition">📍 Maps</a>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('recLoading').classList.add('hidden');
+                listEl.classList.remove('hidden');
+                document.getElementById('mapsContainer').classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+                listEl.innerHTML = `<p class="text-red-500 text-center py-4">Failed to get ideas. Try again later!</p>`;
+                document.getElementById('recLoading').classList.add('hidden');
+                listEl.classList.remove('hidden');
+            }
+        }
+
+        // --- FITUR BARU: TOMBOL GOOGLE MAPS GLOBAL ---
+        function openGoogleMaps() {
+            if(!userProfile) return;
+            const dietRules = userProfile.dietModes.join(" ");
+            const query = `${dietRules} food near National Yunlin University of Science and Technology, Douliu`;
+            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
+        }
+    </script>
+</body>
+</html>
